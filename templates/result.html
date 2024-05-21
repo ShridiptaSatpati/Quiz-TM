@@ -1,0 +1,57 @@
+{% extends "base.html" %} {% block title %} QUIZO | Results {% endblock %} {%
+block body %}
+    <div
+    style="
+        font-size: 50px;
+        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande',
+        'Lucida Sans', Arial, sans-serif;
+    "
+    >
+    QUIZO
+    </div>
+
+    <div class="form-group mb-0" style="margin-top: 2.5rem; font-size: 2rem">
+    {% if (contents[3] == False) %}
+
+        <h1>Hello! {{contents[0]}}</h1>
+        <br />
+        Your Result -- <br />
+        Obtained Score: {{contents[1]}} <br />
+        Obtained Percentage: {{contents[2]}} <br />
+
+        {% if (contents[2]|float > 80.0 ) %} 
+        Type: Virtuoso <br />
+
+        
+        {% elif ((contents[2]|float >= 65.0)) and (contents[2]|float <= 80.0) %} 
+        Type: Master Planner <br />
+
+        
+        {% elif ((contents[2]|float >= 50.0) and (contents[2]|float < 65.0)) %} 
+        Type: Efficient Executer <br />
+
+        
+        {% elif ((contents[2]|float >= 35.0) and (contents[2]|float < 50.0)) %} 
+        Type: Balanced Worker <br />
+
+        {% elif ((contents[2]|float >= 20.0) and (contents[2]|float < 35.0)) %} 
+        Type: Overwhelmed Jugler <br />
+        {% else %} 
+        
+        Type: Novice <br />
+        {% endif %}
+
+        <!-- <div class="form-group mb-0" style="margin-top: 0.1rem; font-size: 1rem">
+        <i>One point for one correct answer</i>
+        </div> -->
+
+
+    {% else %}
+    </div>
+
+    <div class="form-group mb-0" style="margin-top: 2.5rem; font-size: 2rem">
+    You already attempted once.<br />
+    </div>
+    {% endif %}
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}
+ QUIZO | Take Quiz
+{% endblock %}
+
+{% block body %}
+<!-- Main content -->
+<div
+    style="font-size: 50px; font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif">
+    QUIZO
+</div>
+<hr>
+    <section>
+
+        <form id="quickForm" action="/check_result" method="POST" style="height: 2.5rem; font-size: 1rem;left: 20px;">
+            <div>
+            <label for="ckemail">Email:</label><br>
+            <input  type="email" name="ckemail" id="ckemail" required>
+            </div> <br>
+
+            <div style="font-size: 30px; margin-top: 2rem;">
+                <button type="submit" class="btn btn-outline-secondary" style="width: 66rem; height: 2.5rem; font-size: 1rem; left: 28px;">Submit</button>
+            </div>
+            <br>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
