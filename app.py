@@ -211,7 +211,7 @@ def start_schedule_upload():
         # Create the background scheduler
         scheduler = BackgroundScheduler()
         # Create the job
-        scheduler.add_job(func=upload, trigger="interval", seconds=60)
+        scheduler.add_job(func=upload, trigger="interval", seconds=120)
         # Start the scheduler
         scheduler.start()
         return Response("Schedule Upload Started (360 interval)", mimetype="text/plain")
