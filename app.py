@@ -138,7 +138,7 @@ def submit_quiz():
         flname = request.form.get("flname").strip()
         flemail = request.form.get("email").strip()
 
-        exist = isExist(flname, flemail)[1]
+        exist = isExist(flemail, flname)[1]
 
         if not exist:
             with open("attempts.csv", "a") as file:
