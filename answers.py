@@ -29,8 +29,6 @@ my_list = [
 "I often tackle tasks that seem easier to complete first.3",
 "I focus on tasks that will have the most immediate impact.4",
 ],
-
-
 [
 "I often pick leisure activities based on convenience.1",
 "I choose activities that relax and rejuvenate me.2",
@@ -69,9 +67,9 @@ my_list = [
 ],
 [
 "I often get caught up in urgent tasks at the expense of important ones.1",
-"I use reminders to keep important tasks on my radar.2",
+"I schedule dedicated time for important tasks regardless of urgency.2",
 "I regularly review and adjust my priorities.3",
-"I schedule dedicated time for important tasks regardless of urgency.4",
+"I use reminders to keep important tasks on my radar.4",
 ],
 [
 "I often feel stressed and behind schedule.1",
