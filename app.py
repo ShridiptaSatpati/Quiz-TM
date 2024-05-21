@@ -111,7 +111,7 @@ def submit_quiz():
             for value, option in enumerate(qs_index, 1):
                 if option[:-1] == attempts[idx]:
                     print("Matched", value)
-                    score += option[-1]
+                    score += int(option[-1])
 
         flname = request.form.get("flname").strip()
         flemail = request.form.get("email").strip()
