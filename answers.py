@@ -97,9 +97,10 @@ my_list = [
 ],
 [
 "I often get distracted by digital interruptions.1",
-"I designate specific times for checking emails and messages.4",
-"I create a focused work environment.3",
 "I use apps to block distracting websites and notifications.2",
+"I create a focused work environment.3",
+"I designate specific times for checking emails and messages.4",
+
 ],
 [
 "I often struggle to maintain motivation for long-term projects.1",
