@@ -42,7 +42,7 @@ my_list = [
 "I adjust my schedule daily based on workload.4",
 ],
 [
-"I often push through until all tasks are done, risking burnout.1",
+"I often push through until all tasks are done thus risking burnout.1",
 "I take regular breaks and practice self-care.2",
 "I delegate or seek support for some urgent tasks.3",
 "I prioritize and manage my workload to avoid overload.4",
@@ -93,7 +93,7 @@ my_list = [
 "I often struggle to identify the root causes.1",
 "I use motivational techniques to get started.2",
 "I reflect on my motivations and barriers regularly.3",
-"I break down tasks into smaller, more manageable parts.4",
+"I break down tasks into smaller and more manageable parts.4",
 ],
 [
 "I often get distracted by digital interruptions.1",
