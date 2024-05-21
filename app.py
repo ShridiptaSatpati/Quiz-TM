@@ -1,7 +1,11 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, Response
 from utils import create_question_object, create_score_object, get_field
 from answers import my_list
 import json
+import pandas as pd
+import dropbox
+import functools
+from flask import request, abort
 
 app = Flask(__name__, template_folder="templates")
 
@@ -17,6 +21,16 @@ name = ""
 authentic = ""
 global score_list
 score_list = []
+
+# BROWSERS = ['Mozilla', 'Gecko', 'Chrome', 'Safari']
+# def no_browsers(f):
+#     @functools.wraps(f)
+#     def wrapper(*args, **kwargs):
+#         user_agent = request.headers.get('User-Agent', '')
+#         if any(agent in user_agent for agent in BROWSERS):
+#             return abort(400)
+#         return f(*args, **kwargs)
+#     return wrapper
 
 @app.route("/quiz", methods=["POST", "GET"])
 def quiz():
@@ -37,137 +51,6 @@ def quiz():
     return render_template("quiz.html", array=quiz)
 
 
-@app.route("/index")
-def home():
-
-    global email
-    global password
-    global authentic
-
-    if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
-        return render_template("admin.html")
-    elif verify(email, password):
-        return render_template("user.html", var=authentic)
-    return render_template("index.html")
-
-
-@app.route("/onsignup", methods=["POST", "GET"])
-def submit():
-
-    global email
-    global password
-    global name
-
-    name = request.form.get("name")
-    email = request.form.get("email")
-    password = request.form.get("password")
-    user = (
-        str(name)
-        + ","
-        + str(email)
-        + ","
-        + str(password)
-        + ","
-        + "0"
-        + ","
-        + "0"
-        + ","
-        + "0"
-    )
-
-    users_data_file = open("users_data.txt", "a")
-    print(user, file=users_data_file, sep="\n")
-    users_data_file.close()
-
-    return render_template("index.html")
-
-
-@app.route("/onlogin", methods=["POST", "GET"])
-def user_verify():
-
-    global email
-    global password
-    global wholeCredentials
-    global authentic
-    email = request.form.get("email")
-    password = str(request.form.get("password"))
-
-    if verify(email, password):
-        return render_template("user.html", var=authentic)
-
-    elif email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
-        return render_template("admin.html")
-    return render_template("invalid.html")
-
-
-def verify(email, password):
-
-    global authentic
-    email_list = []
-    password_list = []
-    users = []
-
-    users_data_file = open("users_data.txt", "r")
-    users = users_data_file.read().splitlines()
-    users_data_file.close()
-
-    for idx in range(0, len(users)):
-        email_list.append(get_field(users[idx], 1))
-        password_list.append(get_field(users[idx], 2))
-
-
-    for idx in range(0, len(email_list)):
-        if email == email_list[idx] and password == password_list[idx]:
-            authentic = get_field(users[idx], 0)
-            return True
-    return False
-
-
-@app.route("/showall", methods=["POST", "GET"])
-def show_all():
-
-    scores_list = []
-    users = []
-
-    user_data_file = open("users_data.txt", "r")
-    users = user_data_file.read().splitlines()
-    user_data_file.close()
-
-    for user in users:
-        user_score = create_score_object(user)
-        scores_list.append(user_score)
-
-    return render_template("showall.html", list=scores_list)
-
-
-@app.route("/addquestion", methods=["POST", "GET"])
-def add_question():
-    question_string = request.form.get("question")
-    option_1 = request.form.get("op1")
-    option_2 = request.form.get("op2")
-    option_3 = request.form.get("op3")
-    option_4 = request.form.get("op4")
-    correct_option = request.form.get("corop")
-
-    question = (
-        question_string
-        + ","
-        + option_1
-        + ","
-        + option_2
-        + ","
-        + option_3
-        + ","
-        + option_4
-        + ","
-        + correct_option
-    )
-    questions_file = open("questions.txt", "a")
-    print(question, file=questions_file, sep="\n")
-    questions_file.close()
-    return render_template("admin.html")
-
-
 @app.route("/input_check_result", methods=["POST", "GET"])
 def input_check_result():
     return render_template("input_check_result.html")
@@ -175,166 +58,167 @@ def input_check_result():
 
 @app.route("/check_result", methods=["POST", "GET"])
 def check_result():
-
-    global email
-    global score
-    global attempts
-    global rec
-
-    rec = ()
-    attempts = []
-    score = 0
-
+    rec = []
     ckemail = request.form.get("ckemail").strip()
     exist = False
 
-    for idx in range(len(score_list)):
-        idx_email = score_list[idx][0]
-        if idx_email ==  ckemail:
-            rec = score_list[idx]
-            exist=True
+    df = pd.read_csv('scoreboard.csv')
+    outlist = df.values.tolist()
 
-    print('-'*100)
+
+    for idx in range(len(outlist)):
+        idx_email = outlist[idx][0]
+        if idx_email == ckemail:
+            rec = outlist[idx]
+            exist = True
+
+    print("-" * 100)
     print(rec)
-        # return render_template("user.html")
-    return render_template("check_result.html", contents=rec+(exist,))
+    rec.append(exist)
+    # return render_template("user.html")
+    return render_template("check_result.html", contents=rec)
 
-
-
-
+#@no_browsers
 @app.route("/submit", methods=["POST", "GET"])
 def submit_quiz():
+    try:
+        attempts = []
+        score = 0
+        percent_score = 0
+        quiz = []
 
-    global email
-    global score
-    global attempts
+        questions_file = open("questions.txt", "r")
+        questions = questions_file.read().splitlines()
+        questions_file.close()
+        number = 0
 
-    users = []
+        for question in questions:
+            question_object = create_question_object(question, number)
+            quiz.append(question_object)
 
-    attempts = []
-    score = 0
-    quiz = []
+        for idx in range(0, len(quiz)):
+            mcq = "mcq" + str(idx + 1)
+            attempts.append(request.form.get(mcq))
 
-    questions_file = open("questions.txt", "r")
-    questions = questions_file.read().splitlines()
-    questions_file.close()
-    number = 0
+        for idx in range(0, len(attempts)):
+            # if quiz[idx].correct == attempts[idx]:
+            #     score += 1
+            qs_index = my_list[idx]
+            print("*" * 100)
+            print(attempts[idx])
+            print(qs_index)
 
-    for question in questions:
-        question_object = create_question_object(question, number)
-        quiz.append(question_object)
+            for value, option in enumerate(qs_index, 1):
+                if option[:-1] == attempts[idx]:
+                    print("Matched", value)
+                    score += value
 
-    for idx in range(0, len(quiz)):
-        mcq = "mcq" + str(idx + 1)
-        attempts.append(request.form.get(mcq))
+        flname = request.form.get("flname").strip()
+        flemail = request.form.get("email").strip()
+        exist = False
 
-    for idx in range(0, len(attempts)):
-        # if quiz[idx].correct == attempts[idx]:
-        #     score += 1
-        qs_index = my_list[idx]
-        print('*'*100)
-        print(attempts[idx])    
-        print(qs_index)
+        df = pd.read_csv('scoreboard.csv')
+        outlist = df.values.tolist()
 
-        for value, option in enumerate(qs_index):
-            if(option == attempts[idx]):
-                print("Matched", value+1)
-                score+=(value+1)
+        for idx in range(len(outlist)):
+            idx_email = outlist[idx][0]
+            if idx_email == flemail:
+                exist = True
 
-    # user_data_file = open("users_data.txt", "r")
-    # users = user_data_file.read().splitlines()
-    # user_data_file.close()
-
-    # for idx in range(0, len(users)):
-    #     if email == get_field(users[idx], 1):
-    #         users[idx] = (
-    #             str(get_field(users[idx], 0))
-    #             + ","
-    #             + str(get_field(users[idx], 1))
-    #             + ","
-    #             + str(get_field(users[idx], 2))
-    #             + ","
-    #             + str(score)
-    #             + ","
-    #             + str(len(attempts))
-    #             + ","
-    #             + str(len(quiz))
-    #         )
-
-    flname = request.form.get("flname").strip()
-    flemail = request.form.get("email").strip()
-    exist = False
-
-    for idx in range(len(score_list)):
-        idx_email = score_list[idx][0]
-        if idx_email ==  flemail:
-            exist = True
-
-    for idx in range(len(score_list)):
-        idx_name = score_list[idx][1]
-        if idx_name ==  flname:
-            exist = True
-
-    if not exist:
-        with open('attempts.txt', 'a') as file: 
-            save_attempts = attempts
-            print('-'*100)
-            print(flname, flemail)
-
-            attempts.insert(0, flname)
-            attempts.insert(1, flemail)
-            attempts.append("final score = "+str(score))
-            
-            file.write(', '.join(map(str, attempts))) 
-            file.write("\n\n")
-
-            # user_data_file = open("users_data.txt", "w")
-            # for user in users:
-            #     print(user, file=user_data_file, sep="\n")
-            # user_data_file.close()
-
-            score_list.append((flemail, flname, score, str(score/20*100.0)))
-            print("~"*100)
-            print(score_list)
-
-            # with open("scoreboard.json", "a") as final:
-            #     json.dump(score_list, final, indent = 4, separators=(','))
-
-        # return render_template("user.html")
-    return render_template("result.html", contents=[str(flname), str(score), str(score/20*100.0), exist])
+        for idx in range(len(outlist)):
+            idx_name = outlist[idx][1]
+            if idx_name == flname:
+                exist = True
 
 
+        if not exist:
+            with open("attempts.csv", "a") as file:
+                save_attempts = attempts
+                print("-" * 100)
+                print(flname, flemail)
+                percent_score = score / (4*20) * 100.0
+                percent_score = round(percent_score, 2)
 
-@app.route("/login", methods=["POST", "GET"])
-def validation():
-    return render_template("login.html")
+                attempts.insert(0, flname)
+                attempts.insert(1, flemail)
+                attempts.append(str(score))
+                attempts.append(str(percent_score))
+
+                file.write(",".join(map(str, attempts)))
+                file.write("\n")
+
+                score_list.append((flemail, flname, score, percent_score))
+                print("~" * 100)
+                print(score_list)
+
+            with open("scoreboard.csv", "a") as file:
+                for idx in score_list:
+                    file.write(",".join(map(str, idx)))
+                    file.write("\n")
+
+        #upload files to dropbox
+        return render_template(
+            "result.html", contents=[str(flname), str(score), str(percent_score), exist]
+        )
+    except Exception as e: 
+        print(e)
+        return abort(400)
 
 
-@app.route("/show", methods=["POST", "GET"])
-def results():
-    # global email
-    # users = []
-    # attempts = 0
+@app.route("/upload", methods=["POST", "GET"])
+def upload():
+    try:
+        dbx = dropbox.Dropbox(oauth2_refresh_token="8eo5uhh8gyMAAAAAAAAAAdQi_KyQORu0H1M-Uz6RzB6fZnvsSmmpjFDLHHdphFYl", app_key= '8acxm40niuruxve', app_secret = '2m1n6svs3oecqvq')
+        f1 = open("attempts.csv", 'rb')
+        print(dbx.files_upload(f1.read(), "/attempts.csv", mode=dropbox.files.WriteMode("overwrite")))
 
-    # users_data_file = open("users_data.txt", "r")
-    # users = users_data_file.read().splitlines()
-    # users_data_file.close()
+        f2 = open("scoreboard.csv", 'rb')
+        print(dbx.files_upload(f2.read(), "/scoreboard.csv", mode=dropbox.files.WriteMode("overwrite")))
+        return Response("Done Uploading", mimetype="text/plain")
 
-    # score = 0
-    # for user in users:
-    #     check = get_field(user, 1)
-    #     if email == check:
-    #         score = str(get_field(user, 3))
-    #         attempts = str(get_field(user, 4))
-
-    #enter email
-
-    return render_template("result.html", var1=str(score), var2=str(len(attempts)))
+    except Exception as e: 
+        print(e)
+        return abort(400)
 
 
-@app.route("/register", methods=["POST", "GET"])
-def register():
-    return render_template("register.html")
+
+@app.route("/attempts.csv", methods=["POST", "GET"])
+def display_attempts():
+    with open("attempts.csv", "r") as f:
+        content = f.read()
+    return Response(content, mimetype="text/plain")
+
+
+@app.route("/download_attempts.csv", methods=["POST", "GET"])
+def download_attempts():
+    with open("attempts.csv", "r") as f:
+        content = f.read()
+
+    response = Response(content, content_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=attempts.csv"
+    return response
+
+
+@app.route("/scoreboard.csv", methods=["POST", "GET"])
+def display_scoreboard():
+    with open("scoreboard.csv", "r") as f:
+        content = f.read()
+    return Response(content, mimetype="text/plain")
+
+
+@app.route("/download_scoreboard.csv", methods=["POST", "GET"])
+def download_scoreboard():
+    with open("scoreboard.csv", "r") as f:
+        content = f.read()
+
+    response = Response(content, content_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=scoreboard.csv"
+    return response
+
+
+# @app.route("/show", methods=["POST", "GET"])
+# def results():
+#     return render_template("result.html", var1=str(score), var2=str(len(attempts)))
 
 
 @app.route("/quizstrt", methods=["POST", "GET"])
@@ -342,25 +226,7 @@ def strt():
     return render_template("quizstrt.html")
 
 
-@app.route("/contact", methods=["POST", "GET"])
-def get_social():
-    return render_template("contact.html")
+# if __name__ == "__main__":
+#     app.run(debug=True, host="0.0.0.0")
 
-
-@app.route("/add", methods=["POST", "GET"])
-def add():
-    return render_template("addques.html")
-
-
-@app.route("/logout", methods=["POST", "GET"])
-def logout():
-    global email
-    global password
-    email = ""
-    password = ""
-    return render_template("index.html")
-
-
-#if __name__ == "__main__":
-    #app.run(debug=True, host="0.0.0.0")
 
