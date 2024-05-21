@@ -6,6 +6,8 @@ import pandas as pd
 import dropbox
 import functools
 from flask import request, abort
+import threading
+
 
 app = Flask(__name__, template_folder="templates")
 
@@ -62,7 +64,8 @@ def check_result():
     ckemail = request.form.get("ckemail").strip()
     exist = False
 
-    df = pd.read_csv('scoreboard.csv')
+    # df = pd.read_csv('scoreboard.csv')
+    df = pd.read_csv('https://www.dropbox.com/scl/fi/v28h3jutezqgs13ewlo7u/scoreboard.csv?rlkey=eyojnz0anyt5rpr2s3wft8ojg&st=ijejyxw0&dl=1', sep = ',')
     outlist = df.values.tolist()
 
 
@@ -152,9 +155,14 @@ def submit_quiz():
                 print(score_list)
 
             with open("scoreboard.csv", "a") as file:
-                for idx in score_list:
-                    file.write(",".join(map(str, idx)))
-                    file.write("\n")
+                file.write(",".join(map(str, (flemail, flname, score, percent_score))))
+                file.write("\n")
+
+            # if (len(score_list)%10 == 0)
+            #     upload()
+            thread = threading.Thread(target=upload)
+            thread.start()
+
 
         #upload files to dropbox
         return render_template(
