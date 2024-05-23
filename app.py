@@ -22,7 +22,7 @@ email = ""
 password = ""
 name = ""
 authentic = ""
-global score_list, maxmarks, numqs
+global score_list, maxmarks, numqs, scheduler
 score_list = []
 maxmarks = 4
 numqs = 20
@@ -67,6 +67,7 @@ def isExist(email = '', name = ''):
     df1 = pd.read_csv('https://www.dropbox.com/scl/fi/v28h3jutezqgs13ewlo7u/scoreboard.csv?rlkey=eyojnz0anyt5rpr2s3wft8ojg&st=ijejyxw0&dl=1', sep = ',')
     df2 = pd.read_csv('scoreboard.csv')
     result = pd.concat([df1, df2])
+    result = result.drop_duplicates(inplace=False)
     outlist = result.values.tolist()
 
 
@@ -140,13 +141,11 @@ def submit_quiz():
 
         exist = isExist(flemail, flname)[1]
 
+        percent_score = score / (maxmarks*numqs) * 100.0
+        percent_score = round(percent_score, 2)
+
         if not exist:
             with open("attempts.csv", "a") as file:
-                save_attempts = attempts
-                print("-" * 100)
-                print(flname, flemail)
-                percent_score = score / (maxmarks*numqs) * 100.0
-                percent_score = round(percent_score, 2)
 
                 attempts.insert(0, flname)
                 attempts.insert(1, flemail)
@@ -156,13 +155,19 @@ def submit_quiz():
                 file.write(",".join(map(str, attempts)))
                 file.write("\n")
 
-                score_list.append((flemail, flname, score, percent_score))
-                print("~" * 100)
-                print(score_list)
+                print("-" * 100)
+                print(flname, flemail)
+
 
             with open("scoreboard.csv", "a") as file:
+
                 file.write(",".join(map(str, (flemail, flname, score, percent_score))))
                 file.write("\n")
+
+                print("-" * 100)
+                score_list.append((flemail, flname, score, percent_score))
+                print("Current Scoreboard")
+                print(score_list)
 
         #upload files to dropbox
         return render_template(
@@ -173,31 +178,67 @@ def submit_quiz():
         return abort(400)
 
 
-@app.route("/upload", methods=["POST", "GET"])
-def upload():
+@app.route("/update", methods=["POST", "GET"])
+def update():
     try:
         dbx = dropbox.Dropbox(oauth2_refresh_token="8eo5uhh8gyMAAAAAAAAAAdQi_KyQORu0H1M-Uz6RzB6fZnvsSmmpjFDLHHdphFYl", app_key= '8acxm40niuruxve', app_secret = '2m1n6svs3oecqvq')
 
-        print("enter")
         df1 = pd.read_csv('https://www.dropbox.com/scl/fi/v28h3jutezqgs13ewlo7u/scoreboard.csv?rlkey=eyojnz0anyt5rpr2s3wft8ojg&st=ijejyxw0&dl=1', sep = ',')
-        print("exist")
         df2 = pd.read_csv('scoreboard.csv')
+
+        print("~"*100)
+        print("scoreboard from dropbox")
+        print(df1)
+
         result = pd.concat([df1, df2])
-        result = result.drop_duplicates(keep=False, inplace=False)
+
+        result = result.drop_duplicates(inplace=False)
         result.to_csv('scoreboard2.csv', header=True, index=False)
-        f = open("scoreboard2.csv", 'rb')
-        print(dbx.files_upload(f.read(), "/scoreboard.csv", mode=dropbox.files.WriteMode("overwrite")))
+
+        print("~"*100)
+        print("current merged scoreboard")
         print(result)
+
 
         df1 = pd.read_csv('https://www.dropbox.com/scl/fi/wud60y2pc5lao9h5995jf/attempts.csv?rlkey=i9y75we1jze1744s9gzscr27m&st=x9uezkki&dl=1', sep = ',')
         df2 = pd.read_csv('attempts.csv')
+
+        print("~"*100)
+        print("attempts from dropbox")
+        print(df1)
+
         result = pd.concat([df1, df2])
-        result = result.drop_duplicates(keep=False, inplace=False)
+
+        result = result.drop_duplicates(inplace=False)
         result.to_csv('attempts2.csv', header=True, index=False)
+
+        print("~"*100)
+        print("current merged attempts")
+        print(result)
+        return Response("Done Updating", mimetype="text/plain")
+
+    except Exception as e: 
+        print(e)
+        return abort(400)
+
+
+
+
+@app.route("/upload", methods=["POST", "GET"])
+def upload():
+    try:
+        print("Started Uploading")
+        dbx = dropbox.Dropbox(oauth2_refresh_token="8eo5uhh8gyMAAAAAAAAAAdQi_KyQORu0H1M-Uz6RzB6fZnvsSmmpjFDLHHdphFYl", app_key= '8acxm40niuruxve', app_secret = '2m1n6svs3oecqvq')
+        print("Updating Results")
+        update()
+
+        f = open("scoreboard2.csv", 'rb')
+        print(dbx.files_upload(f.read(), "/scoreboard.csv", mode=dropbox.files.WriteMode("overwrite")))
+
         f = open("attempts2.csv", 'rb')
         print(dbx.files_upload(f.read(), "/attempts.csv", mode=dropbox.files.WriteMode("overwrite")))
-        print(result)
 
+        print("Done Uploading")
         return Response("Done Uploading", mimetype="text/plain")
 
     except Exception as e: 
@@ -211,7 +252,7 @@ def start_schedule_upload():
         # Create the background scheduler
         scheduler = BackgroundScheduler()
         # Create the job
-        scheduler.add_job(func=upload, trigger="interval", seconds=120)
+        scheduler.add_job(func=upload, trigger="interval", seconds=360)
         # Start the scheduler
         scheduler.start()
         return Response("Schedule Upload Started (360 interval)", mimetype="text/plain")
@@ -219,9 +260,19 @@ def start_schedule_upload():
         print(e)
         return abort(400)
 
+@app.route("/stop_schedule_upload", methods=["POST", "GET"])
+def stop_schedule_upload():
+    try:
+        scheduler.shutdown() 
+        return Response("Schedule Upload Stopped (360 interval)", mimetype="text/plain")
+    except Exception as e: 
+        print(e)
+        return abort(400)
+
 
 @app.route("/attempts", methods=["POST", "GET"])
 def display_attempts():
+    content = ''
     with open("attempts2.csv", "r") as f:
         content = f.read()
     return Response(content, mimetype="text/plain")
@@ -229,6 +280,7 @@ def display_attempts():
 
 @app.route("/download_attempts", methods=["POST", "GET"])
 def download_attempts():
+    content = ''
     with open("attempts2.csv", "r") as f:
         content = f.read()
 
@@ -239,6 +291,7 @@ def download_attempts():
 
 @app.route("/scoreboard", methods=["POST", "GET"])
 def display_scoreboard():
+    content = ''
     with open("scoreboard2.csv", "r") as f:
         content = f.read()
     return Response(content, mimetype="text/plain")
@@ -246,6 +299,7 @@ def display_scoreboard():
 
 @app.route("/download_scoreboard", methods=["POST", "GET"])
 def download_scoreboard():
+    content = ''
     with open("scoreboard2.csv", "r") as f:
         content = f.read()
 
